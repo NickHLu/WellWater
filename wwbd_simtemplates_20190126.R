@@ -1,3 +1,32 @@
+######################################################################################################################
+# Author: Alex Keil
+# Program: wwbd_simtemplate_20181009.R
+# Language: R
+# Date: Tuesday, October 9, 2018 at 9:46:36 PM
+# Project: Well water/birth defects Aim 1 simulations
+# Tasks:
+# Data in: 
+# Data out: 
+# Description:
+# Keywords:
+# Released under the GNU General Public License: http://www.gnu.org/copyleft/gpl.html
+######################################################################################################################
+#install.packages(rstan)
+#install.packages(tidyverse)
+library(rstan)
+library(readr)
+
+#######################
+# options
+#######################
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+
+#######################
+# functions
+#######################
+source("wwbd_simfunctions_20190101.R")
+
 
 #######################
 # model
@@ -30,21 +59,18 @@ stanmodel <-
     }
    }
    parameters{
-    vector<lower=0>[p] lambda; // local shrinkage
     vector[p] beta;
-    real<lower=0> sigma;
+    real<lower=0> sig_b; 
+    real mu_b;
     real b0; // given uniform prior
-    real<lower=0> tau; // global shrinkage
-    //real<lower=0> sig; // global shrinkage hyperprior
+    
    }
    transformed parameters{}
    model{
     {
      vector[N] mu;
-     lambda ~ cauchy(0,1.0); // local shrinkage
-     tau ~ cauchy(0,1.0); // global shrinkage
-     target += -log(sigma*sigma); // jeffreys prior
-     beta ~ normal(0,lambda * tau * sigma);
+     sig_b ~ cauchy(0, 1);
+     beta ~ normal(mu_b, sig_b);
      mu = b0 + D * beta;
      y ~ bernoulli_logit(mu);
     }
@@ -79,14 +105,15 @@ stanmodel <-
 #######################
 # do analysis
 RAW = data_importer(); # read all data
-res = analysis_wrapper(iter=1, rawdata=RAW, dir="~/temp/", root="horseshoe", s.code=stanmodel)
-ressm = summary.bayesgf(res) 
+res = analysis_wrapper(iter=1, rawdata=RAW, dir="", root="horseshoe", s.code=stanmodel)
+ressm = summary.bgfsimmodlist(res) 
 # can start at a later iteration, too
-res2 = analysis_wrapper(iter=3:4, rawdata=RAW, dir="~/temp/", root="horseshoe")
+res2 = analysis_wrapper(iter=3:4, rawdata=RAW, dir="", root="horseshoe")
 #summarize
-sumres = summary.bayesgf(do.call(c, list(res, res2)))
+sumres = summary.bgfsimmodlist(do.call(c, list(res, res2)))
 sumres
 
 #can also access all posterior estimates if needed
 sumres$postmeans
 plot(sumres)
+
