@@ -1,4 +1,34 @@
 
+######################################################################################################################
+# Author: Alex Keil
+# Program: wwbd_simtemplate_20181009.R
+# Language: R
+# Date: Tuesday, October 9, 2018 at 9:46:36 PM
+# Project: Well water/birth defects Aim 1 simulations
+# Tasks:
+# Data in: 
+# Data out: 
+# Description:
+# Keywords:
+# Released under the GNU General Public License: http://www.gnu.org/copyleft/gpl.html
+######################################################################################################################
+#install.packages(rstan)
+#install.packages(tidyverse)
+library(rstan)
+library(readr)
+
+#######################
+# options
+#######################
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+
+#######################
+# functions
+#######################
+source("code/wwbd_simfunctions_20190101.R")
+
+
 #######################
 # model
 #######################
@@ -25,27 +55,27 @@ stanmodel <-
      //D[,c] = X[,c];
     }
     for(c in (dx+1):p){
-     D[,c] = to_vector(X[,c-5]) .* to_vector(X[,c-5]);
+     D[,c] = to_vector(X[,c-5]) .* to_vector(X[,c-5]);  #polynomial; design matrix 
      //D[,c] = X[,c-5] .* X[,c-5];
     }
    }
    parameters{
     vector<lower=0>[p] lambda; // local shrinkage
-    vector[p] beta;
-    real<lower=0> sigma;
+    vector[p] beta;    # parameters for logit model
+    real<lower=0> sigma;  
     real b0; // given uniform prior
     real<lower=0> tau; // global shrinkage
-    //real<lower=0> sig; // global shrinkage hyperprior
+    //real<lower=0> sig; // global shrinkage hyperprior; sigma: inverse gamma.
    }
    transformed parameters{}
-   model{
+   model{           # work model first
     {
      vector[N] mu;
      lambda ~ cauchy(0,1.0); // local shrinkage
      tau ~ cauchy(0,1.0); // global shrinkage
      target += -log(sigma*sigma); // jeffreys prior
      beta ~ normal(0,lambda * tau * sigma);
-     mu = b0 + D * beta;
+     mu = b0 + D * beta;  # b0 is missing
      y ~ bernoulli_logit(mu);
     }
    }
